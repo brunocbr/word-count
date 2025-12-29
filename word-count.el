@@ -74,10 +74,11 @@ Functions added to this hook will be called before the count is saved.")
           (setq word-count-timer (run-at-time "1 min" 60 #'word-count-background-tasks)))
         ;; Add local hooks
         (add-hook 'post-self-insert-hook 'word-count-count-words nil t)
-        (add-hook 'kill-buffer-hook 'word-count-deactivate))
+        (add-hook 'kill-buffer-hook 'word-count-disable))
     (remove-hook 'post-self-insert-hook 'word-count-count-words t)
-    (remove-hook 'kill-buffer-hook 'word-count-deactivate)
+    (remove-hook 'kill-buffer-hook 'word-count-disable)
     (word-count-deactivate)))
+
 
 (defun word-count-deactivate ()
   "Deactivate the word count minor mode and clean up resources.
