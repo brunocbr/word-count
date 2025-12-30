@@ -155,7 +155,14 @@ The identifier is formatted as 'username@hostname:PID', where:
       (word-count-update-log-entry word-count-last-date word-count-my-word-count)
       (setq word-count-my-word-count 0)) ;; reset the word count
     (word-count-update-log-entry today word-count-my-word-count)
-    (setq word-count-last-date today)))
+    (setq word-count-last-date today)
+    (setq word-count-last-saved-count word-count-my-word-count)))
+
+(defun word-count-save-count-maybe ()
+  "Save the word count if it is different from the last saved value,
+stored in `word-count-last-saved-count`."
+  (unless (= word-count-last-saved-count word-count-my-word-count)
+    (word-count-save-count)))
 
 (defun word-count-save-count-maybe ()
   "Save the word count if it is different from the last saved value,
