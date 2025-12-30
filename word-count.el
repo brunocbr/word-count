@@ -134,7 +134,7 @@ The identifier is formatted as 'username@hostname:PID', where:
       (if (file-exists-p word-count-log-file)
           (insert-file-contents word-count-log-file))
       (goto-char (point-max))
-      (if (search-backward entry nil t)
+      (if (search-backward (concat entry "\t") nil t)
           (delete-region (point) (1+ (line-end-position))))  ;; Remove previous entry for the date
       (insert (concat entry "\t" count-str "\n"))
       (write-region (point-min) (point-max) word-count-log-file nil))))
@@ -163,7 +163,7 @@ The identifier is formatted as 'username@hostname:PID', where:
         (with-temp-buffer
           (insert-file-contents word-count-log-file)
           (goto-char (point-max))
-          (when (search-backward entry nil t)
+          (when (search-backward (concat entry "\t") nil t)
             (let* ((line (thing-at-point 'line t))
                    (parts (split-string line "\t")))
               (when parts
@@ -186,7 +186,7 @@ is set and the file exists."
         (with-temp-buffer
           (insert-file-contents word-count-log-file)
           (goto-char (point-max))
-          (while (search-backward today nil t)
+          (while (search-backward (concat today "\t") nil t)
             (let* ((line (thing-at-point 'line t))
                    (parts (split-string line "\t")))
               (when (and parts
