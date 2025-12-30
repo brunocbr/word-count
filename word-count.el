@@ -52,6 +52,9 @@ Functions added to this hook will be called before the count is saved.")
 (defvar-local word-count-last-char nil
   "Stores the last character typed to check for word changes.")
 
+(defvar word-count-last-saved-count nil
+  "Stores the last count persisted.")
+
 (defvar word-count-timer nil
   "The timer for word count saves and updates from other sources.")
 
@@ -154,6 +157,12 @@ The identifier is formatted as 'username@hostname:PID', where:
     (word-count-update-log-entry today word-count-my-word-count)
     (setq word-count-last-date today)))
 
+(defun word-count-save-count-maybe ()
+  "Save the word count if it is different from the last saved value,
+stored in `word-count-last-saved-count`."
+  (unless (= word-count-last-saved-count word-count-my-word-count)
+    (word-count-save-count)))
+
 (defun word-count-load-from-file ()
   "Helper function to load the word count from log file."
   (let* ((today (word-count-today-date))
@@ -203,7 +212,7 @@ is set and the file exists."
 (defun word-count-background-tasks ()
   "Save the local word count to the log file, and update the other word counts."
   (progn
-    (word-count-save-count)
+    (word-count-save-count-maybe)
     (word-count-update-other-counts)))
 
 ;;;###autoload
