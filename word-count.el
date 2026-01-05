@@ -29,6 +29,11 @@ These characters are considered as boundaries for word counting."
   :type 'list
   :group 'word-count)
 
+(defcustom word-count-save-interval 120
+  "Time interval for saving the word count, in seconds."
+  :type 'integer
+  :group 'word-count)
+
 (defvar word-count-my-word-count nil
   "Count of words typed.")
 
@@ -74,7 +79,8 @@ Functions added to this hook will be called before the count is saved.")
         (unless word-count-other-word-counts
           (word-count-update-other-counts))
         (when (= (word-count-active-buffers) 1) ;; set timer if this is the first activation of the minor mode
-          (setq word-count-timer (run-at-time "1 min" 60 #'word-count-background-tasks)))
+          (setq word-count-timer (run-at-time "1 min" word-count-save-interval
+                                              #'word-count-background-tasks)))
         ;; Add local hooks
         (add-hook 'post-self-insert-hook 'word-count-count-words nil t)
         (add-hook 'kill-buffer-hook 'word-count-disable))
