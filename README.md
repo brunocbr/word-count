@@ -38,13 +38,15 @@ You can also enable it automatically in `text-mode` (or other modes) by adding t
 (add-hook 'text-mode-hook 'word-count-mode)
 ```
 
-### Customize Logging File
+## Customize Logging Files Location
 
-You can customize the log file location by setting the `word-count-log-file` variable:
+You can customize the location of your log files by setting the `word-count-log-files` variable:
 
 ```elisp
-(setq word-count-log-file "~/path/to/your/word-count-log.txt")
+(setq word-count-log-files "~/path/to/your/word-count-log-%s-%s.txt")
 ```
+
+The required `%s` placeholders will be replaced by the date and a unique identifier for the Emacs instance, respectively.
 
 ### Hooks
 
