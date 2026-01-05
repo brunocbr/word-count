@@ -1,7 +1,7 @@
 ;;; word-count.el --- Word counter with daily logging -*- lexical-binding: t; -*-
 
 ;; Author: Bruno Loureiro Conte
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience, tools, writing
 ;; URL: https://github.com/word-count/word-count.el
@@ -14,12 +14,15 @@
 
 ;;; Code:
 
-(defcustom word-count-log-file "~/.emacs.d/word-count-log.txt"
-  "Path to the file where the daily word count will be logged.
-If set to nil, logging will be disabled, and no word count will be saved.
-The file will be created if it does not already exist. The log is stored in a
-tab-separated values (TSV) format, making it easy to analyze with
-spreadsheets or other tools."
+(defcustom word-count-log-files "~/.emacs.d/word-count-log-%s-%s.txt"
+  "A string format defining the path for logging daily word counts.
+The first `%s' will be replaced with the current date (ISO 8601).
+The second `%s' will be replaced with a unique identifier for the current Emacs
+instance.
+Setting this variable to nil disables logging, and no word
+count data will be saved.
+The logs are stored in tab-separated values (TSV) format, facilitating
+easy analysis with spreadsheets or other tools."
   :type 'file
   :group 'word-count)
 
@@ -114,14 +117,32 @@ and resets the internal state variable `word-count-my-word-count` to nil."
           (setq count (1+ count)))))
     count))
 
+(defun word-count--base64-to-alphabetical (str)
+  "Transform Base64 encoded string STR to use only lowercase letters and numbers."
+  (let ((alphabet "abcdefghijklmnopqrstuvwxyz0123456789"))
+    (apply #'concat
+           (mapcar (lambda (c)
+                     (string (aref alphabet (mod (string-to-number (format "%d" c)) 36))))
+                   (string-to-list str)))))
+
 (defun word-count-source-id ()
   "Generate a unique identifier for the current instance of Emacs.
 
-The identifier is formatted as 'username@hostname:PID', where:
+The identifier is formatted as 'username@hostname_hash', where:
 - 'username' is the current user's login name.
 - 'hostname' is the name of the system on which Emacs is running.
-- 'PID' is the process ID of the current Emacs instance."
-  (concat (user-login-name) "@" (system-name) ":" (number-to-string (emacs-pid))))
+- 'hash' is a compact hash based on the current username,
+hostname, process ID, and a timestamp, ensuring uniqueness."
+  (let* ((username (user-login-name))
+         (hostname (system-name))
+         (pid-str (number-to-string (emacs-pid)))
+         (timestamp (format-time-string "%Y%m%dT%H%M%S" (current-time)))
+         (raw-id (concat username "@" hostname ":" pid-str ":" timestamp))
+         (hash (secure-hash 'sha256 raw-id))
+         (base64-encoded (base64-encode-string hash t))
+         (truncated (substring base64-encoded 0 (min 24 (length base64-encoded)))))
+    (concat (user-login-name) "@" (system-name) "_"
+            (word-count--base64-to-alphabetical truncated))))
 
 (defun word-count-increment ()
   "Increment the global word count by one."
@@ -142,15 +163,10 @@ The identifier is formatted as 'username@hostname:PID', where:
   "Insert or update the logfile entry for DATE with VALUE."
   (let* ((count-str (number-to-string value))
          (source word-count-source-id)
-         (entry (concat date "\t" source)))
-    (with-temp-buffer
-      (if (file-exists-p word-count-log-file)
-          (insert-file-contents word-count-log-file))
-      (goto-char (point-max))
-      (if (search-backward (concat entry "\t") nil t)
-          (delete-region (point) (1+ (line-end-position))))  ;; Remove previous entry for the date
-      (insert (concat entry "\t" count-str "\n"))
-      (write-region (point-min) (point-max) word-count-log-file nil))))
+         (entry (concat date "\t" count-str "\n"))
+         (logfile (format word-count-log-files date source)))
+    (with-temp-file logfile
+      (insert entry))))
 
 (defun word-count-today-date ()
   (format-time-string "%Y-%m-%d" (current-time)))
@@ -171,56 +187,56 @@ The identifier is formatted as 'username@hostname:PID', where:
 (defun word-count-save-count-maybe ()
   "Save the word count if it is different from the last saved value,
 stored in `word-count-last-saved-count`."
-  (unless (= word-count-last-saved-count word-count-my-word-count)
-    (word-count-save-count)))
-
-(defun word-count-save-count-maybe ()
-  "Save the word count if it is different from the last saved value,
-stored in `word-count-last-saved-count`."
-  (unless (= word-count-last-saved-count word-count-my-word-count)
+  (unless (eql word-count-last-saved-count word-count-my-word-count)
     (word-count-save-count)))
 
 (defun word-count-load-from-file ()
   "Helper function to load the word count from log file."
   (let* ((today (word-count-today-date))
          (source word-count-source-id)
-         (entry (concat today "\t" source)))
-    (if (file-exists-p word-count-log-file)
+         (entry (concat today "\t"))
+         (logfile (format word-count-log-files today source)))
+    (if (file-exists-p logfile)
         (with-temp-buffer
-          (insert-file-contents word-count-log-file)
+          (insert-file-contents logfile)
           (goto-char (point-max))
-          (when (search-backward (concat entry "\t") nil t)
+          (when (search-backward entry nil t)
             (let* ((line (thing-at-point 'line t))
                    (parts (split-string line "\t")))
               (when parts
-                (string-to-number (nth 2 parts)))))))))
+                (string-to-number (nth 1 parts)))))))))
 
 (defun word-count-load-count ()
-  "Load the word count from the log file if `word-count-log-file`
-is set and the file exists."
+  "Load the word count from the log file if `word-count-log-files`
+is set and the appropriate file exists."
   (interactive)
-  (if word-count-log-file
+  (if word-count-log-files
       (or (word-count-load-from-file) 0)
     0))
 
 (defun word-count-load-other-counts ()
   "Load the sum of word counts coming from other instances."
   (let* ((today (word-count-today-date))
-         (this-source word-count-source-id)
-         (other-counts 0))
-    (if (file-exists-p word-count-log-file)
-        (with-temp-buffer
-          (insert-file-contents word-count-log-file)
-          (goto-char (point-max))
-          (while (search-backward (concat today "\t") nil t)
+         (this-source (word-count-source-id))
+         (other-counts 0)
+         (logfile-pattern (format word-count-log-files today "*"))
+         (my-logfile (expand-file-name (format word-count-log-files today this-source)))
+         (files (file-expand-wildcards logfile-pattern)))
+    (message "Pattern: %s\nThe files: %s\n" logfile-pattern files)
+    (dolist (logfile files)
+      (let ((full-logfile (expand-file-name logfile)))
+        (when (and (file-exists-p full-logfile) ;; check that file exists
+                   ;; ignore the log file for the current instance
+                   (not (file-equal-p my-logfile full-logfile)))
+          (with-temp-buffer
+            (insert-file-contents full-logfile)
+            (goto-char (point-min))
             (let* ((line (thing-at-point 'line t))
                    (parts (split-string line "\t")))
-              (when (and parts
-                         (not (string= this-source (nth 1 parts))))
+              (when parts
                 (setq other-counts (+ other-counts
-                                      (string-to-number (nth 2 parts)))))))
-          other-counts)
-      0)))
+                                      (string-to-number (nth 1 parts))))))))))
+    other-counts))
 
 (defun word-count-update-other-counts ()
   "Update the global variable `word-count-other-word-counts`."
