@@ -222,7 +222,6 @@ is set and the appropriate file exists."
          (logfile-pattern (format word-count-log-files today "*"))
          (my-logfile (expand-file-name (format word-count-log-files today this-source)))
          (files (file-expand-wildcards logfile-pattern)))
-    (message "Pattern: %s\nThe files: %s\n" logfile-pattern files)
     (dolist (logfile files)
       (let ((full-logfile (expand-file-name logfile)))
         (when (and (file-exists-p full-logfile) ;; check that file exists
