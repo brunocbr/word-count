@@ -54,7 +54,7 @@ You can add your own functions to run when the word count updates. For example, 
 ```elisp
 (add-hook 'word-count-count-words-hook
           (lambda ()
-            (when (zerop (% word-count-my-word-count 200))
+            (when (zerop (% (word-count-total-words-today) 200))
               (message "Great job! You've written %d words today!" word-count-my-word-count))))
 ```
 

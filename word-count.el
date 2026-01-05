@@ -61,7 +61,7 @@ Functions added to this hook will be called before the count is saved.")
 (define-minor-mode word-count-mode
   "Word counter while typing."
   :lighter (:eval (format " WordsToday[%d]"
-                          (+ word-count-other-word-counts word-count-my-word-count))) ;; Displays the word count
+                          (word-count-total-words-today))) ;; Displays the word count
   (if word-count-mode
       (progn
         (unless word-count-source-id
@@ -82,6 +82,10 @@ Functions added to this hook will be called before the count is saved.")
     (remove-hook 'kill-buffer-hook 'word-count-disable)
     (word-count-deactivate)))
 
+(defun word-count-total-words-today ()
+  "Return the sum of the local count with counts from other instances for
+today."
+  (+ word-count-other-word-counts word-count-my-word-count))
 
 (defun word-count-deactivate ()
   "Deactivate the word count minor mode and clean up resources.
