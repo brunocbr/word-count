@@ -1,6 +1,5 @@
 # word-count.el
-
-`word-count.el` is an Emacs minor mode that counts the number of words typed in real-time in any buffer where the mode is activated. It logs the word count to a file on a daily basis, allowing you to keep track of your writing progress.
+`word-count.el` is an Emacs minor mode that tracks the number of words typed in real-time within any activated buffer. It records the word count daily, organized by instance, enabling you to monitor your writing progress effectively.
 
 ## Features
 
