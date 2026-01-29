@@ -66,6 +66,23 @@ Functions added to this hook will be called before the count is saved.")
 (defvar word-count-timer nil
   "The timer for word count saves and updates from other sources.")
 
+(defgroup word-count-ble nil
+  "BLE integration for word-count."
+  :group 'word-count)
+
+(defcustom word-count-ble-enabled nil
+  "Whether to send today's word count to a BLE device.
+Disabled by default."
+  :type 'boolean
+  :group 'word-count-ble)
+
+(defcustom word-count-ble-program
+  "/Applications/BLE Word Count.app"
+  "Path to the BLE Word Count app (macOS .app bundle) or Python script."
+  :type 'file
+  :group 'word-count-ble)
+
+
 (define-minor-mode word-count-mode
   "Word counter while typing."
   :lighter (:eval (format " WordsToday[%d]"
@@ -244,8 +261,53 @@ is set and the appropriate file exists."
 (defun word-count-background-tasks ()
   "Save the local word count to the log file, and update the other word counts."
   (progn
-    (word-count-save-count-maybe)
-    (word-count-update-other-counts)))
+    (word-count-update-other-counts)
+    (word-count-save-count-maybe)))
+
+(defun word-count-send-to-ble ()
+  "Send today's total word count over BLE."
+  (let* ((total (word-count-total-words-today))
+         (program word-count-ble-program)
+         (buffer (get-buffer-create "*word-count-ble*")))
+    (when (and program
+               (file-exists-p program)
+               (numberp total)
+               (> total 0))
+      (with-current-buffer buffer
+        (erase-buffer))
+      (make-process
+       :name "word-count-ble"
+       :buffer buffer
+       :command
+       (cond
+        ;; macOS .app bundle → use `open --args`
+        ((string-suffix-p ".app" program)
+         (list "open" program "--args" (number-to-string total)))
+
+        ;; fallback: direct executable (python script, binary, etc.)
+        (t
+         (list program (number-to-string total))))
+       :sentinel
+       (lambda (proc _event)
+         (when (and (eq (process-status proc) 'exit)
+                    (/= (process-exit-status proc) 0))
+           (message "word-count BLE error (see *word-count-ble*)")))))))
+
+
+;; (defun word-count-send-to-ble ()
+;;   "Send today's total word count to a BLE device.
+;; Runs asynchronously and is silent unless an error occurs."
+;;   (when (and word-count-ble-enabled
+;;              word-count-ble-script-path)
+;;     (let* ((count (word-count-total-words-today))
+;;            (buffer (get-buffer-create "*word-count BLE errors*")))
+;;       (start-process
+;;        "word-count-ble"
+;;        buffer
+;;        word-count-ble-python-command
+;;        word-count-ble-script-path
+;;        (number-to-string count)))))
+
 
 ;;;###autoload
 (defun word-count-enable ()

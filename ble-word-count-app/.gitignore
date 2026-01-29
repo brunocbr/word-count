@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Python
+venv/
