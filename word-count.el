@@ -248,7 +248,7 @@ is set and the appropriate file exists."
             (insert-file-contents full-logfile)
             (goto-char (point-min))
             (let* ((line (thing-at-point 'line t))
-                   (parts (split-string line "\t")))
+                   (parts (if (stringp line) (split-string line "\t"))))
               (when parts
                 (setq other-counts (+ other-counts
                                       (string-to-number (nth 1 parts))))))))))
